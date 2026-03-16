@@ -1,0 +1,74 @@
+@page "/products/edit/{Id:int}"
+@rendermode InteractiveServer
+@inject IProductService ProductService
+@inject NavigationManager Navigation
+
+<PageTitle>Edit Product</PageTitle>
+
+@if (product is null)
+{
+    <div class="alert alert-warning">Product not found.</div>
+}
+else
+{
+    <h1 class="h3 mb-3">Edit Product</h1>
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <EditForm Model="product" OnValidSubmit="Save">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Name</label>
+                        <InputText class="form-control" @bind-Value="product.Name" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Price HT</label>
+                        <InputNumber class="form-control" @bind-Value="product.PriceHT" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">VAT Rate</label>
+                        <InputSelect class="form-select" @bind-Value="product.VATRate">
+                            @foreach (var vat in VatRates)
+                            {
+                                <option value="@vat">@(vat * 100)%</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Description</label>
+                        <InputText class="form-control" @bind-Value="product.Description" />
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button class="btn btn-primary" type="submit">Update</button>
+                    <a href="/products" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private static readonly decimal[] VatRates = [0.07m, 0.13m, 0.19m];
+    private Product? product;
+
+    protected override async Task OnInitializedAsync()
+    {
+        product = await ProductService.GetProductById(Id);
+    }
+
+    private async Task Save()
+    {
+        if (product is null)
+        {
+            return;
+        }
+
+        await ProductService.UpdateProduct(product);
+        Navigation.NavigateTo("/products");
+    }
+}

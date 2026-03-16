@@ -1,0 +1,79 @@
+@page "/dashboard/taxes"
+@rendermode InteractiveServer
+@inject IDashboardService DashboardService
+@inject ISettingsService SettingsService
+@inject IJSRuntime Js
+
+<PageTitle>Tax Dashboard</PageTitle>
+
+<h1 class="h3 mb-3">Tax Dashboard</h1>
+
+@if (result is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm"><div class="card-body"><h5>Total VAT Collected</h5><h2>@result.TotalVatCollected.ToString("N3")</h2></div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm"><div class="card-body"><h5>Total Tax Stamp</h5><h2>@result.TotalTaxStampAmount.ToString("N3")</h2></div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5>Tax Stamp Config</h5>
+                    <div class="input-group">
+                        <InputNumber class="form-control" @bind-Value="taxStampAmount" />
+                        <button class="btn btn-primary" @onclick="SaveTaxStamp">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <h5>VAT by Rate</h5>
+            <div class="chart-box"><canvas id="vatRateChart"></canvas></div>
+        </div>
+    </div>
+}
+
+@code {
+    private TaxDashboardResult? result;
+    private decimal taxStampAmount = 1m;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (result is null)
+        {
+            return;
+        }
+
+        await Js.InvokeVoidAsync("invoiceCharts.renderBarChart",
+            "vatRateChart",
+            result.VatByRate.Select(x => $"{x.VatRate * 100}%").ToArray(),
+            result.VatByRate.Select(x => x.Amount).ToArray(),
+            "VAT Amount");
+    }
+
+    private async Task SaveTaxStamp()
+    {
+        await SettingsService.UpdateTaxStampAmount(taxStampAmount);
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        result = await DashboardService.GetTaxDashboard();
+        taxStampAmount = await SettingsService.GetTaxStampAmount();
+    }
+}

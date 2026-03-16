@@ -1,0 +1,101 @@
+@page "/dashboard/sales"
+@rendermode InteractiveServer
+@inject IDashboardService DashboardService
+@inject IJSRuntime Js
+
+<PageTitle>Sales Dashboard</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1 class="h3 m-0">Sales Dashboard</h1>
+    <InputSelect class="form-select w-auto" @bind-Value="periodGrouping" @bind-Value:after="ReloadData">
+        <option value="@PeriodGrouping.Day">Day</option>
+        <option value="@PeriodGrouping.Month">Month</option>
+        <option value="@PeriodGrouping.Year">Year</option>
+    </InputSelect>
+</div>
+
+@if (result is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm"><div class="card-body"><h5>Total HT</h5><h2>@result.TotalHT.ToString("N3")</h2></div></div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm"><div class="card-body"><h5>Total TTC</h5><h2>@result.TotalTTC.ToString("N3")</h2></div></div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm"><div class="card-body"><h5>Revenue Per Period</h5><div class="chart-box"><canvas id="salesPeriodChart"></canvas></div></div></div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm"><div class="card-body"><h5>Revenue Per Customer</h5><div class="chart-box"><canvas id="salesCustomerChart"></canvas></div></div></div>
+        </div>
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body table-responsive">
+                    <h5>Revenue Per Product</h5>
+                    <table class="table">
+                        <thead><tr><th>Product</th><th class="text-end">Total</th></tr></thead>
+                        <tbody>
+                            @foreach (var row in result.RevenuePerProduct)
+                            {
+                                <tr><td>@row.Name</td><td class="text-end">@row.Total.ToString("N3")</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private SalesDashboardResult? result;
+    private PeriodGrouping periodGrouping = PeriodGrouping.Month;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (result is null)
+        {
+            return;
+        }
+
+        await RenderCharts();
+    }
+
+    private async Task ReloadData()
+    {
+        result = await DashboardService.GetSalesDashboard(periodGrouping);
+        StateHasChanged();
+    }
+
+    private async Task RenderCharts()
+    {
+        if (result is null)
+        {
+            return;
+        }
+
+        await Js.InvokeVoidAsync("invoiceCharts.renderBarChart",
+            "salesPeriodChart",
+            result.RevenuePerPeriod.Select(x => x.Period).ToArray(),
+            result.RevenuePerPeriod.Select(x => x.TotalTTC).ToArray(),
+            "Revenue TTC");
+
+        await Js.InvokeVoidAsync("invoiceCharts.renderPieChart",
+            "salesCustomerChart",
+            result.RevenuePerCustomer.Take(6).Select(x => x.Name).ToArray(),
+            result.RevenuePerCustomer.Take(6).Select(x => x.Total).ToArray());
+    }
+}

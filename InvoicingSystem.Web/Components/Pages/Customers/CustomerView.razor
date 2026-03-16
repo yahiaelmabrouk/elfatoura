@@ -1,0 +1,41 @@
+@page "/customers/view/{Id:int}"
+@inject ICustomerService CustomerService
+
+<PageTitle>Customer Details</PageTitle>
+
+@if (customer is null)
+{
+    <div class="alert alert-warning">Customer not found.</div>
+}
+else
+{
+    <h1 class="h3 mb-3">@customer.Name</h1>
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Phone</dt>
+                <dd class="col-sm-9">@customer.Phone</dd>
+
+                <dt class="col-sm-3">Email</dt>
+                <dd class="col-sm-9">@customer.Email</dd>
+
+                <dt class="col-sm-3">Tax Number</dt>
+                <dd class="col-sm-9">@customer.TaxNumber</dd>
+
+                <dt class="col-sm-3">Address</dt>
+                <dd class="col-sm-9">@customer.Address</dd>
+            </dl>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Customer? customer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        customer = await CustomerService.GetCustomerById(Id);
+    }
+}

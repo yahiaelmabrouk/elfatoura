@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="InvoicingSystem.Application/InvoicingSystem.Application.csproj" />
+  <Project Path="InvoicingSystem.Domain/InvoicingSystem.Domain.csproj" />
+  <Project Path="InvoicingSystem.Infrastructure/InvoicingSystem.Infrastructure.csproj" />
+  <Project Path="InvoicingSystem.Web/InvoicingSystem.Web.csproj" />
+</Solution>

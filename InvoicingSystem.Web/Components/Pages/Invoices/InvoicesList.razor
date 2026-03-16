@@ -1,0 +1,84 @@
+@page "/invoices"
+@inject IInvoiceService InvoiceService
+@inject IExportService ExportService
+@inject IJSRuntime Js
+
+<PageTitle>Invoices</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1 class="h3 m-0">Invoices</h1>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary" @onclick="ExportCsv">Export CSV</button>
+        <button class="btn btn-outline-secondary" @onclick="ExportExcel">Export Excel</button>
+        <a href="/invoices/create" class="btn btn-primary">Create Invoice</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Invoice #</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Total HT</th>
+                    <th>Total VAT</th>
+                    <th>Total TTC</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var invoice in invoices)
+                {
+                    <tr>
+                        <td>@invoice.InvoiceNumber</td>
+                        <td>@invoice.InvoiceDate.ToString("yyyy-MM-dd")</td>
+                        <td>@invoice.Customer?.Name</td>
+                        <td>@invoice.TotalHT.ToString("N3")</td>
+                        <td>@invoice.TotalVAT.ToString("N3")</td>
+                        <td>@invoice.TotalTTC.ToString("N3")</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => ExportPdf(invoice.InvoiceId)">PDF</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<Invoice> invoices = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        invoices = await InvoiceService.GetAllInvoices();
+    }
+
+    private async Task ExportPdf(int invoiceId)
+    {
+        var file = await ExportService.ExportInvoicePdf(invoiceId);
+        await Download(file);
+    }
+
+    private async Task ExportCsv()
+    {
+        var file = await ExportService.ExportInvoicesCsv();
+        await Download(file);
+    }
+
+    private async Task ExportExcel()
+    {
+        var file = await ExportService.ExportInvoicesExcel();
+        await Download(file);
+    }
+
+    private async Task Download(ExportFileResult file)
+    {
+        using var stream = new MemoryStream(file.Content);
+        using var streamRef = new DotNetStreamReference(stream);
+
+        await Js.InvokeVoidAsync("invoiceDownloads.saveFileFromBytes", file.FileName, file.ContentType, streamRef);
+    }
+}

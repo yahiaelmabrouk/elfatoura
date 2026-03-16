@@ -1,0 +1,57 @@
+@page "/products/create"
+@rendermode InteractiveServer
+@inject IProductService ProductService
+@inject NavigationManager Navigation
+
+<PageTitle>Create Product</PageTitle>
+
+<h1 class="h3 mb-3">Add Product</h1>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <EditForm Model="product" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Name</label>
+                    <InputText class="form-control" @bind-Value="product.Name" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Price HT</label>
+                    <InputNumber class="form-control" @bind-Value="product.PriceHT" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">VAT Rate</label>
+                    <InputSelect class="form-select" @bind-Value="product.VATRate">
+                        @foreach (var vat in VatRates)
+                        {
+                            <option value="@vat">@(vat * 100)%</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <InputText class="form-control" @bind-Value="product.Description" />
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Save</button>
+                <a href="/products" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private static readonly decimal[] VatRates = [0.07m, 0.13m, 0.19m];
+    private Product product = new() { VATRate = 0.19m };
+
+    private async Task Save()
+    {
+        await ProductService.CreateProduct(product);
+        Navigation.NavigateTo("/products");
+    }
+}

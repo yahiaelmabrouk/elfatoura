@@ -1,0 +1,73 @@
+@page "/customers/edit/{Id:int}"
+@rendermode InteractiveServer
+@inject ICustomerService CustomerService
+@inject NavigationManager Navigation
+
+<PageTitle>Edit Customer</PageTitle>
+
+<h1 class="h3 mb-3">Edit Customer</h1>
+
+@if (customer is null)
+{
+    <div class="alert alert-warning">Customer not found.</div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <EditForm Model="customer" OnValidSubmit="Save">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Name</label>
+                        <InputText class="form-control" @bind-Value="customer.Name" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tax Number</label>
+                        <InputText class="form-control" @bind-Value="customer.TaxNumber" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Phone</label>
+                        <InputText class="form-control" @bind-Value="customer.Phone" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <InputText class="form-control" @bind-Value="customer.Email" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Address</label>
+                        <InputText class="form-control" @bind-Value="customer.Address" />
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button class="btn btn-primary" type="submit">Update</button>
+                    <a href="/customers" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Customer? customer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        customer = await CustomerService.GetCustomerById(Id);
+    }
+
+    private async Task Save()
+    {
+        if (customer is null)
+        {
+            return;
+        }
+
+        await CustomerService.UpdateCustomer(customer);
+        Navigation.NavigateTo("/customers");
+    }
+}

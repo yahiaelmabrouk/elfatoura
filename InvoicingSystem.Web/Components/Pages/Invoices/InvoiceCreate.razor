@@ -1,0 +1,200 @@
+@page "/invoices/create"
+@rendermode InteractiveServer
+@inject ICustomerService CustomerService
+@inject IProductService ProductService
+@inject IInvoiceService InvoiceService
+@inject ISettingsService SettingsService
+@inject NavigationManager Navigation
+
+<PageTitle>Create Invoice</PageTitle>
+
+<h1 class="h3 mb-3">Create Invoice</h1>
+
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Customer</label>
+                    <InputSelect class="form-select" @bind-Value="request.CustomerId">
+                        <option value="0">Select customer</option>
+                        @foreach (var customer in customers)
+                        {
+                            <option value="@customer.CustomerId">@customer.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Invoice Date</label>
+                    <InputDate class="form-control" @bind-Value="request.InvoiceDate" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Tax Stamp</label>
+                    <InputNumber class="form-control" @bind-Value="taxStampAmount" />
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-outline-primary w-100" @onclick="AddLine">Add Line</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Unit Price HT</th>
+                            <th>VAT Rate</th>
+                            <th>Total HT</th>
+                            <th>VAT</th>
+                            <th>Total TTC</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < lines.Count; i++)
+                        {
+                            var row = lines[i];
+                            <tr>
+                                <td>
+                                    <InputSelect class="form-select" @bind-Value="row.ProductId" @bind-Value:after="() => OnProductChanged(row)">
+                                        <option value="0">Select product</option>
+                                        @foreach (var product in products)
+                                        {
+                                            <option value="@product.ProductId">@product.Name</option>
+                                        }
+                                    </InputSelect>
+                                </td>
+                                <td><InputNumber class="form-control" @bind-Value="row.Quantity" /></td>
+                                <td><InputNumber class="form-control" @bind-Value="row.UnitPriceHT" /></td>
+                                <td>
+                                    <InputSelect class="form-select" @bind-Value="row.VATRate">
+                                        @foreach (var vat in VatRates)
+                                        {
+                                            <option value="@vat">@(vat * 100)%</option>
+                                        }
+                                    </InputSelect>
+                                </td>
+                                <td>@ComputeLine(row).LineTotalHT.ToString("N3")</td>
+                                <td>@ComputeLine(row).LineVAT.ToString("N3")</td>
+                                <td>@ComputeLine(row).LineTotalTTC.ToString("N3")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveLine(i)">X</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4 ms-lg-auto">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">Invoice Summary</h2>
+                <div class="d-flex justify-content-between"><span>Total HT</span><strong>@Totals.TotalHT.ToString("N3")</strong></div>
+                <div class="d-flex justify-content-between"><span>Total VAT</span><strong>@Totals.TotalVAT.ToString("N3")</strong></div>
+                <div class="d-flex justify-content-between"><span>Tax Stamp</span><strong>@Totals.TaxStampAmount.ToString("N3")</strong></div>
+                <hr />
+                <div class="d-flex justify-content-between"><span>Total TTC</span><strong>@Totals.TotalTTC.ToString("N3")</strong></div>
+
+                <button class="btn btn-primary w-100 mt-3" @onclick="Save">Save Invoice</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private static readonly decimal[] VatRates = [0.07m, 0.13m, 0.19m];
+
+    private CreateInvoiceRequest request = new() { InvoiceDate = DateTime.Today };
+    private decimal taxStampAmount = 1m;
+    private List<Customer> customers = new();
+    private List<Product> products = new();
+    private List<InvoiceLineDraft> lines = new();
+
+    private InvoiceTotals Totals => InvoiceService.CalculateInvoiceTotals(lines.Select(x => ComputeLine(x)), taxStampAmount);
+
+    protected override async Task OnInitializedAsync()
+    {
+        customers = await CustomerService.GetAllCustomers();
+        products = await ProductService.GetProducts();
+        taxStampAmount = await SettingsService.GetTaxStampAmount();
+        AddLine();
+    }
+
+    private void AddLine() => lines.Add(new InvoiceLineDraft { Quantity = 1, VATRate = 0.19m });
+
+    private void RemoveLine(int index)
+    {
+        lines.RemoveAt(index);
+        if (lines.Count == 0)
+        {
+            AddLine();
+        }
+    }
+
+    private void OnProductChanged(InvoiceLineDraft row)
+    {
+        var product = products.FirstOrDefault(x => x.ProductId == row.ProductId);
+        if (product is null)
+        {
+            return;
+        }
+
+        row.UnitPriceHT = product.PriceHT;
+        row.VATRate = product.VATRate;
+    }
+
+    private InvoiceLineCalculationResult ComputeLine(InvoiceLineDraft row)
+    {
+        if (row.ProductId <= 0 || row.Quantity <= 0 || row.UnitPriceHT <= 0)
+        {
+            return new InvoiceLineCalculationResult();
+        }
+
+        return InvoiceService.AddInvoiceLine(row.Quantity, row.UnitPriceHT, row.VATRate);
+    }
+
+    private async Task Save()
+    {
+        if (request.CustomerId <= 0)
+        {
+            return;
+        }
+
+        await SettingsService.UpdateTaxStampAmount(taxStampAmount);
+
+        request.Lines = lines
+            .Where(x => x.ProductId > 0 && x.Quantity > 0)
+            .Select(x => new CreateInvoiceLineRequest
+            {
+                ProductId = x.ProductId,
+                Quantity = x.Quantity,
+                UnitPriceHT = x.UnitPriceHT,
+                VATRate = x.VATRate
+            })
+            .ToList();
+
+        if (request.Lines.Count == 0)
+        {
+            return;
+        }
+
+        await InvoiceService.CreateInvoice(request);
+        Navigation.NavigateTo("/invoices");
+    }
+
+    private class InvoiceLineDraft
+    {
+        public int ProductId { get; set; }
+        public int Quantity { get; set; } = 1;
+        public decimal UnitPriceHT { get; set; }
+        public decimal VATRate { get; set; } = 0.19m;
+    }
+}

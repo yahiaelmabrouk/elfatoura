@@ -1,0 +1,63 @@
+@page "/customers"
+@rendermode InteractiveServer
+@inject ICustomerService CustomerService
+@inject IJSRuntime Js
+
+<PageTitle>Customers</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 m-0">Customers</h1>
+    <a href="/customers/create" class="btn btn-primary">Add Customer</a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Tax Number</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var customer in customers)
+                {
+                    <tr>
+                        <td>@customer.Name</td>
+                        <td>@customer.Phone</td>
+                        <td>@customer.Email</td>
+                        <td>@customer.TaxNumber</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary" href="/customers/view/@customer.CustomerId">View</a>
+                            <a class="btn btn-sm btn-outline-primary" href="/customers/edit/@customer.CustomerId">Edit</a>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteCustomer(customer.CustomerId)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<Customer> customers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        customers = await CustomerService.GetAllCustomers();
+    }
+
+    private async Task DeleteCustomer(int id)
+    {
+        if (!await Js.InvokeAsync<bool>("confirm", "Delete this customer?"))
+        {
+            return;
+        }
+
+        await CustomerService.DeleteCustomer(id);
+        customers = await CustomerService.GetAllCustomers();
+    }
+}

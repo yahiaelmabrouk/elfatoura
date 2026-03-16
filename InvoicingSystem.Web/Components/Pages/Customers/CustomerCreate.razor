@@ -1,0 +1,55 @@
+@page "/customers/create"
+@rendermode InteractiveServer
+@inject ICustomerService CustomerService
+@inject NavigationManager Navigation
+
+<PageTitle>Create Customer</PageTitle>
+
+<h1 class="h3 mb-3">Add Customer</h1>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <EditForm Model="customer" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Name</label>
+                    <InputText class="form-control" @bind-Value="customer.Name" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Tax Number</label>
+                    <InputText class="form-control" @bind-Value="customer.TaxNumber" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Phone</label>
+                    <InputText class="form-control" @bind-Value="customer.Phone" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <InputText class="form-control" @bind-Value="customer.Email" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Address</label>
+                    <InputText class="form-control" @bind-Value="customer.Address" />
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Save</button>
+                <a href="/customers" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private Customer customer = new();
+
+    private async Task Save()
+    {
+        await CustomerService.AddCustomer(customer);
+        Navigation.NavigateTo("/customers");
+    }
+}
